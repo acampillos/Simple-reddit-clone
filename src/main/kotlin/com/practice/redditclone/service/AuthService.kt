@@ -1,6 +1,7 @@
 package com.practice.redditclone.service
 
 import com.practice.redditclone.dto.RegisterRequest
+import com.practice.redditclone.exceptions.SpringRedditException
 import com.practice.redditclone.model.NotificationEmail
 import com.practice.redditclone.model.User
 import com.practice.redditclone.model.VerificationToken
@@ -48,6 +49,23 @@ class AuthService(
         }
         verificationTokenRepository.save(verificationToken)
         return token
+    }
+
+    fun verifyAccount(token: String) {
+        val verificationToken : VerificationToken = verificationTokenRepository
+            .findByToken(token) ?: throw SpringRedditException("Invalid token")
+
+        // Query the user with this token and enable it
+        fetchAndEnableUser(verificationToken)
+    }
+
+    @Transactional
+    private fun fetchAndEnableUser(verificationToken: VerificationToken) {
+        val username : String = verificationToken.user.username
+        val user : User = userRepository
+            .findByUsername(username) ?: throw SpringRedditException("User with name $username not found")
+        user.enabled = true
+        userRepository.save(user)
     }
 
 }
