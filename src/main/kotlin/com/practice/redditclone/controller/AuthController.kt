@@ -1,17 +1,18 @@
 package com.practice.redditclone.controller
 
+import com.practice.redditclone.dto.AuthenticationResponse
+import com.practice.redditclone.dto.LoginRequest
 import com.practice.redditclone.dto.RegisterRequest
-import com.practice.redditclone.model.VerificationToken
 import com.practice.redditclone.service.AuthService
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/auth")
 class AuthController (
-    private val authService: AuthService
-        ){
+    private val authService: AuthService){
 
     @PostMapping("/signup")
     fun signup(@RequestBody registerRequestBody: RegisterRequest) : ResponseEntity<String>{
@@ -24,6 +25,15 @@ class AuthController (
     fun verifyAccount(@PathVariable token : String) : ResponseEntity<String> {
         authService.verifyAccount(token)
         return ResponseEntity<String>("Account Activated Successfully", HttpStatus.OK)
+    }
+
+    @PostMapping(
+        value = ["/login"],
+        produces = [MediaType.APPLICATION_JSON_VALUE],
+        consumes = [MediaType.APPLICATION_JSON_VALUE]
+    )
+    fun login(@RequestBody loginRequest : LoginRequest): AuthenticationResponse {
+        return authService.login(loginRequest)
     }
 
 }
