@@ -24,4 +24,10 @@ class SubredditController(
             .status(HttpStatus.OK)
             .body(subredditService.getAll())
 
+    @GetMapping("/{id}")
+    fun getSubreddit(@PathVariable id: Long): ResponseEntity<SubredditDto> =
+        ResponseEntity
+            .status(HttpStatus.OK)
+            .body(subredditService.getSubreddit(id))
+
 }
