@@ -9,11 +9,12 @@ import com.practice.redditclone.model.User
 import com.practice.redditclone.model.VerificationToken
 import com.practice.redditclone.repository.UserRepository
 import com.practice.redditclone.repository.VerificationTokenRepository
-import com.practice.redditclone.security. JwtProvider
+import com.practice.redditclone.security.JwtProvider
 import org.springframework.security.authentication.AuthenticationManager
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -30,8 +31,8 @@ class AuthService(
     private val jwtProvider: JwtProvider
 ) {
 
-    fun signup(registerRequest : RegisterRequest){
-        val user : User = User()
+    fun signup(registerRequest: RegisterRequest) {
+        val user: User = User()
             .apply {
                 username = registerRequest.username
                 email = registerRequest.email
@@ -40,10 +41,14 @@ class AuthService(
 
         userRepository.save(user)
         val token = generateVerificationToken(user)
-        mailService.sendMail(NotificationEmail("Please Activate your Account",
-            user.email, "Thank you for signing up to Spring Reddit, " +
-                    "please click on the below url to activate your account : " +
-                    "http://localhost:8080/api/auth/accountVerification/$token"))
+        mailService.sendMail(
+            NotificationEmail(
+                "Please Activate your Account",
+                user.email, "Thank you for signing up to Spring Reddit, " +
+                        "please click on the below url to activate your account : " +
+                        "http://localhost:8080/api/auth/accountVerification/$token"
+            )
+        )
     }
 
     private fun generateVerificationToken(user: User): String {
@@ -60,7 +65,7 @@ class AuthService(
     }
 
     fun verifyAccount(token: String) {
-        val verificationToken : VerificationToken = verificationTokenRepository
+        val verificationToken: VerificationToken = verificationTokenRepository
             .findByToken(token) ?: throw SpringRedditException("Invalid token")
 
         // Query the user with this token and enable it
@@ -69,8 +74,8 @@ class AuthService(
 
     @Transactional
     private fun fetchAndEnableUser(verificationToken: VerificationToken) {
-        val username : String = verificationToken.user.username
-        val user : User = userRepository
+        val username: String = verificationToken.user.username
+        val user: User = userRepository
             .findByUsername(username) ?: throw SpringRedditException("User with name $username not found")
         user.enabled = true
         userRepository.save(user)
@@ -78,13 +83,22 @@ class AuthService(
 
     fun login(loginRequest: LoginRequest): AuthenticationResponse {
         var tk = UsernamePasswordAuthenticationToken(loginRequest.username, loginRequest.password)
-        val authenticate : Authentication = authenticationManager.authenticate(tk)
+        val authenticate: Authentication = authenticationManager.authenticate(tk)
         SecurityContextHolder.getContext().authentication = authenticate
         val token = jwtProvider.generateToken(authenticate)
         return AuthenticationResponse(
             token,
             loginRequest.username
         )
+    }
+
+    @Transactional(readOnly = true)
+    fun getCurrentUser(): User {
+        val principal = SecurityContextHolder
+            .getContext()
+            .authentication.principal as org.springframework.security.core.userdetails.User
+        return userRepository.findByUsername(principal.username)
+            ?: throw UsernameNotFoundException("User name not found - ${principal.username}")
     }
 
 }
