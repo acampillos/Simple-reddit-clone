@@ -1,14 +1,18 @@
 package com.practice.redditclone.mapper
 
+import com.github.marlonlom.utilities.timeago.TimeAgo
 import com.practice.redditclone.dto.PostRequest
 import com.practice.redditclone.dto.PostResponse
 import com.practice.redditclone.model.Post
 import com.practice.redditclone.model.Subreddit
 import com.practice.redditclone.model.User
+import com.practice.redditclone.repository.CommentRepository
 import org.springframework.stereotype.Component
 
 @Component
-class PostMapper {
+class PostMapper(
+    private val commentRepository: CommentRepository
+) {
 
     fun toEntity(postRequest: PostRequest, subreddit: Subreddit, user: User) =
         Post().apply {
@@ -27,6 +31,9 @@ class PostMapper {
             post.description,
             post.user.username,
             checkNotNull(post.subreddit.name),
+            post.voteCount,
+            commentRepository.findByPost(post).size,
+            TimeAgo.using(post.created.toEpochMilli())
         )
 
 }

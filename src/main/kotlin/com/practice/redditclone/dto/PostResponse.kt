@@ -6,5 +6,8 @@ data class PostResponse(
     val url: String,
     val description: String,
     val userName: String,
-    val subredditName: String
+    val subredditName: String,
+    val voteCount: Long,
+    val commentCount: Int,
+    val duration: String
 )

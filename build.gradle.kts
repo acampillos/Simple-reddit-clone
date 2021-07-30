@@ -27,6 +27,8 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.hibernate.validator:hibernate-validator:7.0.1.Final")
 	implementation("io.github.microutils:kotlin-logging:1.12.5")
+	implementation("com.github.marlonlom:timeago:4.0.3")
+
 
 	implementation("io.jsonwebtoken:jjwt-api:0.11.2")
 	runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.2")
