@@ -4,20 +4,23 @@ import com.practice.redditclone.exceptions.SpringRedditException
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.Jwts.parserBuilder
 import mu.KotlinLogging
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.security.core.Authentication
 import org.springframework.security.core.userdetails.User
 import org.springframework.stereotype.Service
 import java.security.*
+import java.time.Instant
+import java.util.*
 import javax.annotation.PostConstruct
 
 private val logger = KotlinLogging.logger {}
 
 @Service
-//class JwtProvider(
-//    @Value("\${reddit-clone.jks.key.store.password}") private val keyStorePassword: String,
-//    @Value("\${reddit-clone.jks.key.entry.password}") private val keyEntryPassword: String
-//) {
-class JwtProvider {
+class JwtProvider(
+    @Value("\${jwt.expiration.time}") val jwtExpirationInMillis: Long,
+    @Value("\${reddit-clone.jks.key.store.password}") private val keyStorePassword: String,
+    @Value("\${reddit-clone.jks.key.entry.password}") private val keyEntryPassword: String
+) {
 
     companion object {
         private val log = KotlinLogging.logger {}
@@ -30,7 +33,7 @@ class JwtProvider {
         try {
             keyStore = KeyStore.getInstance("JKS")
             val resourceAsStream = javaClass.getResourceAsStream("/reddit-clone.jks")
-            keyStore.load(resourceAsStream, "password".toCharArray())
+            keyStore.load(resourceAsStream, keyStorePassword.toCharArray())
         } catch (e: Exception) {
             logger.error { e }
             throw SpringRedditException("Exception occurred while loading keystore", e)
@@ -42,12 +45,25 @@ class JwtProvider {
         return Jwts.builder()
             .setSubject(principal.username)
             .signWith(getPrivateKey())
+            .setExpiration(
+                Date.from(
+                    Instant.now().plusMillis(jwtExpirationInMillis)
+                )
+            )
             .compact()
     }
 
+    fun generateTokenWithUsername(username: String) =
+        Jwts.builder()
+            .setSubject(username)
+            .setIssuedAt(Date.from(Instant.now()))
+            .signWith(getPrivateKey())
+            .setExpiration(Date.from(Instant.now().plusMillis(jwtExpirationInMillis)))
+            .compact()
+
     private fun getPrivateKey(): PrivateKey {
         return try {
-            keyStore.getKey("reddit-clone", "password".toCharArray()) as PrivateKey
+            keyStore.getKey("reddit-clone", keyEntryPassword.toCharArray()) as PrivateKey
         } catch (e: Exception) {
             logger.error { e }
             throw SpringRedditException("Exception occurred while retrieving public key from keystore")

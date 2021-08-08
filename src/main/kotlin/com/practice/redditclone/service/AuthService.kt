@@ -2,6 +2,7 @@ package com.practice.redditclone.service
 
 import com.practice.redditclone.dto.AuthenticationResponse
 import com.practice.redditclone.dto.LoginRequest
+import com.practice.redditclone.dto.RefreshTokenRequest
 import com.practice.redditclone.dto.RegisterRequest
 import com.practice.redditclone.exceptions.SpringRedditException
 import com.practice.redditclone.model.NotificationEmail
@@ -18,7 +19,9 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
 import java.util.*
+import javax.validation.Valid
 
 @Service
 @Transactional
@@ -27,6 +30,7 @@ class AuthService(
     private val userRepository: UserRepository,
     private val verificationTokenRepository: VerificationTokenRepository,
     private val mailService: MailService,
+    private val refreshTokenService: RefreshTokenService,
     private val authenticationManager: AuthenticationManager,
     private val jwtProvider: JwtProvider
 ) {
@@ -87,8 +91,10 @@ class AuthService(
         SecurityContextHolder.getContext().authentication = authenticate
         val token = jwtProvider.generateToken(authenticate)
         return AuthenticationResponse(
-            token,
-            loginRequest.username
+            authenticationToken = token,
+            refreshToken = refreshTokenService.generateRefreshToken().token,
+            expiresAt = Instant.now().plusMillis(jwtProvider.jwtExpirationInMillis),
+            username = loginRequest.username
         )
     }
 
@@ -99,6 +105,17 @@ class AuthService(
             .authentication.principal as org.springframework.security.core.userdetails.User
         return userRepository.findByUsername(principal.username)
             ?: throw UsernameNotFoundException("User name not found - ${principal.username}")
+    }
+
+    fun refreshToken(refreshTokenRequest: @Valid RefreshTokenRequest): AuthenticationResponse {
+        refreshTokenService.validateRefreshToken(refreshTokenRequest.refreshToken)
+        val token = jwtProvider.generateTokenWithUsername(refreshTokenRequest.username)
+        return AuthenticationResponse(
+            token,
+            refreshTokenRequest.refreshToken,
+            Instant.now().plusMillis(jwtProvider.jwtExpirationInMillis),
+            refreshTokenRequest.username
+        )
     }
 
 }
